@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * A simple Camel REST DSL route that implements the arrivals service.
- * 
+ *
  */
 @Component
 public class CamelRouter extends RouteBuilder {
@@ -20,7 +20,7 @@ public class CamelRouter extends RouteBuilder {
     public void configure() throws Exception {
         String arrivalsHost = System.getenv("ARRIVALS_HOST");
         String departuresHost = System.getenv("DEPARTURES_HOST");
-        
+
         if (arrivalsHost == null || arrivalsHost.isEmpty()) {
             throw new Exception("ARRIVALS_HOST env var not set");
         } else if(departuresHost == null || departuresHost.isEmpty()) {
@@ -41,7 +41,7 @@ public class CamelRouter extends RouteBuilder {
                 .apiContextRouteId("doc-api")
             .component("servlet")
             .bindingMode(RestBindingMode.json);
-        
+
         rest("/flights")
             .description("List all flights (arrivals & departures)")
             .get()
@@ -57,28 +57,28 @@ public class CamelRouter extends RouteBuilder {
 
             //
             // COMMENT OUT THIS
-            .to("direct:arrivalsImplLocal", "direct:departuresImplLocal");
+            //.to("direct:arrivalsImplLocal", "direct:departuresImplLocal");
 
             //
             // UNCOMMENT THIS
-            //.to("direct:arrivalsImplRemote", "direct:departuresImplRemote");
-    
+            .to("direct:arrivalsImplRemote", "direct:departuresImplRemote");
+
         from("direct:arrivalsImplRemote").description("Arrivals REST service implementation route")
             .streamCaching()
             .to(String.format("http://%s/arrivals?bridgeEndpoint=true", arrivalsHost))
             .convertBodyTo(String.class)
             .unmarshal().json(JsonLibrary.Jackson, ArrivalsList.class);
-    
+
         from("direct:departuresImplRemote").description("Departures REST service implementation route")
             .streamCaching()
             .to(String.format("http://%s/departures?bridgeEndpoint=true", departuresHost))
             .convertBodyTo(String.class)
             .unmarshal().json(JsonLibrary.Jackson, DeparturesList.class);
-    
+
         from("direct:arrivalsImplLocal").description("Arrivals REST service implementation route")
             .streamCaching()
             .to("bean:arrivalsService?method=getArrivals");
-        
+
         from("direct:departuresImplLocal").description("Departures REST service implementation route")
             .streamCaching()
             .to("bean:departuresService?method=getDepartures");
